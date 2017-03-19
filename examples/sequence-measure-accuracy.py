@@ -75,7 +75,7 @@ def custom_generator(config, gan, net):
     net = linear(net, 256, scope="g_lin_proj")
     net = batch_norm_1(gan.config.batch_size, name='g_bn_1')(net)
     net = tf.nn.relu(net)
-    net = linear(net, 32, scope="g_lin_proj3")
+    net = linear(net, 64, scope="g_lin_proj3")
     net = tf.tanh(net)
     return [net]
 
@@ -318,7 +318,7 @@ def train():
     config = selector.load_or_create_config(config_filename, config)
     config['dtype']=tf.float32
     config = hg.config.lookup_functions(config)
-    config.x_dims = [32,1]
+    config.x_dims = [64,1]
     config.channels = 1
     print(config)
 
@@ -342,11 +342,11 @@ def train():
         table = tf.contrib.lookup.string_to_index_table_from_tensor(
             mapping = lookup_keys, default_value = 0)
         
-        x = tf.string_join([x, tf.constant(" " * 32)]) 
-        x = tf.substr(x, [0], [32])
+        x = tf.string_join([x, tf.constant(" " * 64)]) 
+        x = tf.substr(x, [0], [64])
         x = tf.string_split(x,delimiter='')
         x = tf.sparse_tensor_to_dense(x, default_value=' ')
-        x = tf.reshape(x, [32])
+        x = tf.reshape(x, [64])
         print("X___",x.get_shape())
         x = table.lookup(x)
         x = tf.cast(x, dtype=tf.float32)
