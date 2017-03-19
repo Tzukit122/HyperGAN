@@ -318,6 +318,8 @@ def train():
     config = selector.load_or_create_config(config_filename, config)
     config['dtype']=tf.float32
     config = hg.config.lookup_functions(config)
+    config.x_dims = [32,1]
+    config.channels = 1
     print(config)
 
     def circle(x):

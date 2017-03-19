@@ -80,11 +80,9 @@ def create(config, gan, net, input=None):
     z = net
     x_dims = gan.config.x_dims
     z_proj_dims = config.z_projection_depth
-    primes = find_smallest_prime(x_dims[0], x_dims[1])
-    primes = [16,16]
     # project z
     print("Z_PRO", z_proj_dims, primes)
-    net = linear(net, z_proj_dims*primes[0]*primes[1], scope="g_lin_proj", gain=config.orthogonal_initializer_gain)
+    net = linear(net, z_proj_dims*x_dims[0], scope="g_lin_proj", gain=config.orthogonal_initializer_gain)
     new_shape = [gan.config.batch_size, primes[0],primes[1],z_proj_dims]
     net = tf.reshape(net, new_shape)
 
@@ -130,7 +128,8 @@ def create(config, gan, net, input=None):
         noise = tf.random_normal(net.get_shape(), mean=0, stddev=0.001)
         net = tf.concat([net,noise], 3)
         print("INPUT IS", input)
-        net = tf.concat([net,input], 3)
+        if input:
+            net = tf.concat([net,input], 3)
         for j in range(config.extra_layers):
             name='g_layers_'+str(j)
             net = block_conv(net, activation, batch_size, 'identity', name, output_channels=int(net.get_shape()[3]), filter=3, gain=config.orthogonal_initializer_gain)
