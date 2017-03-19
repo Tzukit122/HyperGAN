@@ -20,7 +20,7 @@ def inception_block(net, config, activation, batch_size,id,name, resize=None, ou
         mask = tf.reshape(mask, net.get_shape())
         net *= tf.nn.sigmoid(mask)
 
-    if output_channels == 3:
+    if output_channels <= 3:
         return conv2d(net, output_channels, name=name, k_w=filter, k_h=filter, d_h=1, d_w=1)
 
     net1 = conv2d(net, output_channels//3, name=name+'1', k_w=1, k_h=1, d_h=1, d_w=1)
@@ -30,7 +30,7 @@ def inception_block(net, config, activation, batch_size,id,name, resize=None, ou
     return net
 
 def dense_block(net,config,  activation, batch_size,id,name, resize=None, output_channels=None, stride=2, noise_shape=None, dtype=tf.float32,filter=3, batch_norm=None, sigmoid_gate=None, reshaped_z_proj=None):
-    if output_channels == 3:
+    if output_channels <= 3:
         return block_conv(net, activation, batch_size, 'identity', name, output_channels=output_channels, filter=filter, batch_norm=config.layer_regularizer)
 
     net1 = block_conv(net, activation, batch_size, 'identity', name, output_channels=max(output_channels-16, 16), filter=filter, batch_norm=config.layer_regularizer)
@@ -80,10 +80,13 @@ def create(config, gan, net):
     x_dims = gan.config.x_dims
     z_proj_dims = config.z_projection_depth
     primes = find_smallest_prime(x_dims[0], x_dims[1])
+    print("PRIMES", primes)
     # project z
     net = linear(net, z_proj_dims*primes[0]*primes[1], scope="g_lin_proj", gain=config.orthogonal_initializer_gain)
     new_shape = [gan.config.batch_size, primes[0],primes[1],z_proj_dims]
     net = tf.reshape(net, new_shape)
+
+    print('---', net)
 
     depth=0
     w=int(net.get_shape()[1])
@@ -110,11 +113,15 @@ def create(config, gan, net):
             for j in range(config.extra_layers):
                 net = config.block(net, config, activation, batch_size, 'identity', 'g_layers_init'+str(j), output_channels=int(net.get_shape()[3]), filter=3)
         s = [int(x) for x in net.get_shape()]
-        layers = int(net.get_shape()[3])//depth_reduction
+        output_channels = int(net.get_shape()[3])//depth_reduction
         if(i == depth-1):
-            layers=gan.config.channels
+            output_channels=gan.config.channels
         resized_wh=[s[1]*2, s[2]*2]
+        if gan.config.x_dims[1] == 1:
+            resized_wh[1]=1
         net = tf.image.resize_images(net, [resized_wh[0], resized_wh[1]], config.resize_image_type)
+
+        print('---', net)
         if(config.layer_filter):
             fltr = config.layer_filter(gan, net)
             if(fltr is not None):
@@ -130,11 +137,11 @@ def create(config, gan, net):
         else:
             sigmoid_gate = None
 
-        net = config.block(net, config, activation, batch_size, 'identity', 'g_layers_'+str(i), output_channels=layers, filter=3, sigmoid_gate=sigmoid_gate)
+        net = config.block(net, config, activation, batch_size, 'identity', 'g_layers_'+str(i), output_channels=output_channels, filter=3, sigmoid_gate=sigmoid_gate)
         if(i == depth-1):
             first3 = net
         else:
-            first3 = tf.slice(net, [0,0,0,0], [-1,-1,-1, gan.config.channels])
+            first3 = tf.slice(net, [0,0,0,0], [-1,-1,-1,gan.config.channels])
         if config.final_activation:
             if config.layer_regularizer:
                 first3 = config.layer_regularizer(gan.config.batch_size, name='g_bn_first3_'+str(i))(first3)

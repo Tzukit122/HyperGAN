@@ -51,6 +51,10 @@ def discriminator(gan, config, x, g, xs, gs, prefix='d_'):
     depth = config['layers']
     batch_norm = config['layer_regularizer']
     strided = config.strided
+    print('x,g',x,g)
+    
+    x = tf.reshape(x, [gan.config.batch_size, gan.config.x_dims[0], gan.config.x_dims[1], gan.config.channels])
+    g = tf.reshape(g, [gan.config.batch_size, gan.config.x_dims[0], gan.config.x_dims[1], gan.config.channels])
 
     # TODO: cross-d feature
     if(config['resize']):
@@ -74,8 +78,10 @@ def discriminator(gan, config, x, g, xs, gs, prefix='d_'):
     else:
         net = tf.concat(axis=0, values=[x,g])
     if(config['noise']):
-        net += tf.random_normal(net.get_shape(), mean=0, stddev=config['noise'], dtype=gan.config.dtype)
+        net += tf.truncated_normal(net.get_shape(), mean=0, stddev=config['noise'], dtype=gan.config.dtype)
         
+    filterw=3
+    filterh=min(3, int(net.get_shape()[2]))
 
     if strided:
         net = conv2d(net, config.first_strided_conv_size, name=prefix+'_expand', k_w=3, k_h=3, d_h=2, d_w=2,regularizer=None,gain=config.orthogonal_initializer_gain)
@@ -100,12 +106,19 @@ def discriminator(gan, config, x, g, xs, gs, prefix='d_'):
             g_filter_i = tf.concat(axis=3, values=[gs[index], config['layer_filter'](gan, xs[i])])
             xg = tf.concat(axis=0, values=[x_filter_i, g_filter_i])
         else:
-            xg = tf.concat(axis=0, values=[xs[index], gs[index]])
+            s = [int(val) for val in gs[index].get_shape()]
+            new_size =[s[1], s[2]]
+            x_append = tf.image.resize_images(x, new_size, 1)
+            print("index is" ,index, len(gs), new_size, gs[index], x_append)
+            g_mod = gs[index]
+            xg = tf.concat(axis=0, values=[x_append, g_mod])
 
         if(config['noise']):
             xg += tf.random_normal(xg.get_shape(), mean=0, stddev=config['noise'], dtype=gan.config.dtype)
   
+        print("prog enh?_", config.progressive_enhancement)
         if config['progressive_enhancement']:
+            print("adding xg")
             net = tf.concat(axis=3, values=[net, xg])
     
       filter_size_w = 2
