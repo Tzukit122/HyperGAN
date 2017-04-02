@@ -50,7 +50,8 @@ x,y,f,num_labels,examples_per_epoch = image_loader.labelled_image_tensors_from_d
                         format=args.format,
                         crop=args.crop,
                         width=width,
-                        height=height)
+                        height=height,
+			shuffle=False)
 
 def generator_config():
     return resize_conv_generator.config(

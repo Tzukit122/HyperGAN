@@ -13,7 +13,7 @@ def build_labels(dirs):
     labels[dir.split('/')[-1]]=next_id
     next_id+=1
   return labels,next_id
-def labelled_image_tensors_from_directory(directory, batch_size, channels=3, format='jpg', width=64, height=64, crop=False, preprocess=False):
+def labelled_image_tensors_from_directory(directory, batch_size, channels=3, format='jpg', width=64, height=64, crop=False, preprocess=False, shuffle=True):
   filenames = glob.glob(directory+"/**/*."+format)
   labels,total_labels = build_labels(sorted(glob.glob(directory+"/*")))
   num_examples_per_epoch = 30000//4
@@ -76,7 +76,7 @@ def labelled_image_tensors_from_directory(directory, batch_size, channels=3, for
                            min_fraction_of_examples_in_queue)
 
   # Generate a batch of images and labels by building up a queue of examples.
-  x,y,f= _get_data(float_image, label, features, min_queue_examples, batch_size)
+  x,y,f= _get_data(float_image, label, features, min_queue_examples, batch_size, shuffle)
 
   return x, y,f, total_labels, num_examples_per_epoch
 
@@ -85,13 +85,24 @@ def _get_features(image):
     vggnet_loader.maybe_download_and_extract()
     return vggnet_loader.get_features(image)
 
-def _get_data(image, label, features, min_queue_examples, batch_size):
+def _get_data(image, label, features, min_queue_examples, batch_size, shuffle):
   num_preprocess_threads = 24
-  images, label_batch, f_b= tf.train.shuffle_batch(
-      [image, label, features],
-      batch_size=batch_size,
-      num_threads=num_preprocess_threads,
-      capacity= batch_size*10,
-      min_after_dequeue=batch_size)
+  tf_batch = tf.train.batch
+
+  if shuffle:
+      tf_batch = tf.train.shuffle_batch
+      images, label_batch, f_b= tf.train.shuffle_batch(
+	  [image, label, features],
+	  batch_size=batch_size,
+	  num_threads=num_preprocess_threads,
+	  capacity= batch_size*10,
+	  min_after_dequeue=batch_size)
+  else:
+      images, label_batch, f_b= tf.train.batch(
+	  [image, label, features],
+	  batch_size=batch_size,
+	  num_threads=num_preprocess_threads,
+	  capacity= batch_size*10,
+	)
   return images, tf.reshape(label_batch, [batch_size]), f_b
 
