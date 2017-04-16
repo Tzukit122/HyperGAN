@@ -19,6 +19,16 @@ def vae_distance(x, rx):
     rx = tf.reshape(rx, [(int)(rx.get_shape()[0]), -1])
     return tf.reduce_sum(-x * tf.log(rx + 1e-8) - (1.0 - x) * tf.log(1.0 - rx + 1e-8), axis=1)
 
+def vae_distance_shifted(x, rx):
+
+    x = (x + 1.) / 2.
+    rx = (rx + 1.) / 2.
+    print("VAE GAN LOSS")
+    x = tf.reshape(x, [(int)(x.get_shape()[0]), -1])
+    rx = tf.reshape(rx, [(int)(rx.get_shape()[0]), -1])
+    return tf.reduce_sum(-x * tf.log(rx + 1e-8) - (1.0 - x) * tf.log(1.0 - rx + 1e-8), axis=1)
+
+
 def standard_block(config, net, depth, prefix='d_'):
    batch_norm = config['layer_regularizer']
    activation = config['activation']
